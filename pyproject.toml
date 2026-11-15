@@ -17,12 +17,12 @@ dependencies = [
 ]
 
 [project.scripts]
-spaceapps = "spaceapps_cursor.cli:main"
+spaceapps = "spaceapps.cli:main"
 
 [build-system]
 requires = ["uv_build>=0.13.8,<0.14.0"]
 build-backend = "uv_build"
 
 [tool.uv.build-backend]
-module-name = "spaceapps_cursor"
+module-name = "spaceapps"
 module-root = "src"

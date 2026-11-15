@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from spaceapps_cursor.regions import Region
+from spaceapps.regions import Region
 
 POWER_URL = "https://power.larc.nasa.gov/api/temporal/daily/point"
 PARAMETERS = [

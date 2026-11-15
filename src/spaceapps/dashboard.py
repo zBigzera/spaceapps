@@ -6,8 +6,8 @@ import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-from spaceapps_cursor.analysis import DetectiveReport
-from spaceapps_cursor.regions import Region
+from spaceapps.analysis import DetectiveReport
+from spaceapps.regions import Region
 
 VARIABLE_GLOSSARY = [
     ("Precipitação (PRECTOTCORR)", "Chuva diária corrigida, NASA POWER / MERRA-2, em mm/dia. É o gatilho meteorológico da enchente."),

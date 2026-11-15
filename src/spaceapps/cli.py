@@ -4,10 +4,10 @@ import argparse
 from datetime import date
 from pathlib import Path
 
-from spaceapps_cursor.analysis import add_hydrology_features, analyze
-from spaceapps_cursor.dashboard import write_dashboard
-from spaceapps_cursor.power import fetch_nasa_power
-from spaceapps_cursor.regions import REGIONS, Region, get_region
+from spaceapps.analysis import add_hydrology_features, analyze
+from spaceapps.dashboard import write_dashboard
+from spaceapps.power import fetch_nasa_power
+from spaceapps.regions import REGIONS, Region, get_region
 
 ROOT = Path.cwd()
 CACHE_DIR = ROOT / "data" / "cache"
@@ -106,7 +106,7 @@ def main(argv: list[str] | None = None) -> None:
     path = write_dashboard(featured, report, region, output)
     print(f"\n🌐 Dashboard salvo em: {path}")
     if args.show:
-        from spaceapps_cursor.dashboard import build_figures
+        from spaceapps.dashboard import build_figures
 
         build_figures(featured, report, region)[0].show()
 
