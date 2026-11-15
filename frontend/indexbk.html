@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Earth System Trend Detective — NASA Space Apps</title>
+    <!-- Plotly.js -->
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <style>
+        :root {
+            --bg-body: #020617;
+            --bg-card: #0f172a;
+            --bg-card-hover: #131c31;
+            --border-color: #1e293b;
+            --text-main: #e2e8f0;
+            --text-muted: #94a3b8;
+            --accent-blue: #38bdf8;
+            --accent-purple: #c084fc;
+            --accent-yellow: #facc15;
+            --accent-red: #f87171;
+            --accent-green: #34d399;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: var(--bg-body);
+            color: var(--text-main);
+            margin: 0;
+            padding: 32px;
+            line-height: 1.6;
+        }
+
+        header {
+            margin-bottom: 24px;
+        }
+
+        h1 {
+            color: #f8fafc;
+            font-size: 2.2rem;
+            margin: 0 0 8px 0;
+            background: linear-gradient(to right, #38bdf8, #c084fc);
+            -webkit-text-fill-color: transparent;
+        }
+
+        h2 {
+            color: #f8fafc;
+            font-size: 1.3rem;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 8px;
+            margin-top: 0;
+        }
+
+        h3 {
+            color: var(--accent-blue);
+            font-size: 1.1rem;
+            margin-top: 0;
+        }
+
+        a {
+            color: var(--accent-blue);
+            text-decoration: none;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 24px;
+            margin: 20px 0;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            transition: border-color 0.2s ease;
+        }
+        .card:hover {
+            border-color: #334155;
+        }
+
+        .chart-description {
+            background: rgba(56, 189, 248, 0.03);
+            border-left: 4px solid var(--accent-blue);
+            padding: 16px 20px;
+            margin-bottom: 16px;
+            border-radius: 0 12px 12px 0;
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin-top: 12px;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        td, th {
+            border-bottom: 1px solid #1e293b;
+            padding: 12px;
+            text-align: left;
+        }
+        th {
+            background-color: #090d16;
+            color: #f8fafc;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        td {
+            background-color: #0f172a;
+            color: #e2e8f0;
+            font-size: 13px;
+        }
+        tr:hover td {
+            background-color: var(--bg-card-hover);
+        }
+
+        li {
+            margin: 8px 0;
+        }
+
+        .muted {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .control-row {
+            display: flex;
+            gap: 16px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        select, input, button {
+            background: #1e293b;
+            color: var(--text-main);
+            border: 1px solid #334155;
+            padding: 10px 14px;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        select:hover, input:hover, button:hover {
+            background: #334155;
+            border-color: var(--accent-blue);
+        }
+        select:focus, input:focus, button:focus {
+            outline: none;
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.2);
+        }
+        button {
+            cursor: pointer;
+            background: #0284c7;
+            border-color: #0369a1;
+            color: white;
+            font-weight: 600;
+        }
+        button:hover {
+            background: #0369a1;
+        }
+
+        .loading-container {
+            text-align: center;
+            padding: 80px 20px;
+        }
+        .spinner {
+            width: 48px;
+            height: 48px;
+            border: 4px solid #1e293b;
+            border-top-color: var(--accent-blue);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 16px auto;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        @media (max-width: 900px) {
+            .grid-2 {
+                grid-template-columns: 1fr;
+            }
+            body {
+                padding: 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Earth System Trend Detective</h1>
+        <p class="muted">NASA Space Apps Challenge — Monitoramento Hidrológico e Climático Inteligente</p>
+    </header>
+    
+    <div class="controls card">
+        <div class="control-row">
+            <div>
+                <label for="regionSelect"><strong>Bacia / Região:</strong></label>
+                <select id="regionSelect" onchange="handleRegionChange()">
+                    <option value="uba">Ubá, Minas Gerais</option>
+                    <option value="petropolis">Petrópolis, Rio de Janeiro</option>
+                    <option value="porto-alegre">Porto Alegre, Rio Grande do Sul</option>
+                    <option value="recife">Recife, Pernambuco</option>
+                    <option value="custom">🌍 Coordenada Personalizada...</option>
+                </select>
+            </div>
+
+            <!-- Inputs de coordenadas personalizadas (ocultos por padrão) -->
+            <div id="customInputs" style="display: none; gap: 8px; align-items: center; flex-wrap: wrap;">
+                <input type="text" id="customName" placeholder="Nome do Local" style="width: 140px;">
+                <input type="number" step="any" id="customLat" placeholder="Latitude (ex: -21.12)" style="width: 150px;">
+                <input type="number" step="any" id="customLon" placeholder="Longitude (ex: -42.94)" style="width: 150px;">
+            </div>
+        </div>
+
+        <div class="control-row" style="border-top: 1px solid #1e293b; padding-top: 14px;">
+            <div>
+                <label for="startDate"><strong>Data Inicial:</strong></label>
+                <input type="date" id="startDate" value="2026-01-01" style="width: 150px;">
+            </div>
+            <div>
+                <label for="endDate"><strong>Data Final:</strong></label>
+                <input type="date" id="endDate" style="width: 150px;">
+            </div>
+            <button onclick="loadDashboard()">🔄 Carregar Análise</button>
+        </div>
+    </div>
+
+    <div id="app">
+        <div class="loading-container">
+            <div class="spinner"></div>
+            <div style="font-size: 1.2rem; color: var(--accent-blue);">Carregando dados da API da NASA POWER...</div>
+        </div>
+    </div>
+
+    <script>
+        // Define data final padrão como hoje ao abrir a página
+        document.getElementById('endDate').value = new Date().toISOString().split('T')[0];
+
+        const GLOSSARY = [
+            ["Precipitação (PRECTOTCORR)", "Chuva diária corrigida, NASA POWER / MERRA-2, em mm/dia. É o gatilho meteorológico da enchente."],
+            ["Saturação superficial (GWETTOP)", "Umidade da camada 0–5 cm (0–1). Responde rápido à chuva; indica encharcamento raso e escoamento imediato."],
+            ["Saturação radicular (GWETROOT)", "Umidade de 0–100 cm (0–1). Memória hídrica do solo: se já está alto, chuva nova vira escoamento."],
+            ["Evapotranspiração (EVPTRNS)", "Energia usada para evaporar água. Convertida em mm para um balanço chuva − ET."],
+            ["API", "Índice de precipitação antecedente: memória exponencial da chuva (k=0,85). Captura solo ‘já molhado’."],
+            ["Índice de risco", "Combinação 0–100 de chuva em 7 dias, saturação do solo, API e anomalia mensal. Crítico ≥ 75."]
+        ];
+
+        function handleRegionChange() {
+            const region = document.getElementById('regionSelect').value;
+            const customDiv = document.getElementById('customInputs');
+            if (region === 'custom') {
+                customDiv.style.display = 'flex';
+            } else {
+                customDiv.style.display = 'none';
+            }
+        }
+
+        async function loadDashboard() {
+            const region = document.getElementById('regionSelect').value;
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+            const appDiv = document.getElementById('app');
+            
+            if (!startDate || !endDate) {
+                alert('Por favor, informe a data inicial e a data final.');
+                return;
+            }
+
+            appDiv.innerHTML = `
+                <div class="loading-container">
+                    <div class="spinner"></div>
+                    <div style="font-size: 1.2rem; color: var(--accent-blue);">Buscando dados da API da NASA para o período selecionado...</div>
+                </div>
+            `;
+
+            let url = `https://spaceapps-bbmd.onrender.com/api/detective?region=${region}&start=${startDate}&end=${endDate}`;
+
+            if (region === 'custom') {
+                const name = document.getElementById('customName').value || 'Local Personalizado';
+                const lat = document.getElementById('customLat').value;
+                const lon = document.getElementById('customLon').value;
+
+                if (!lat || !lon) {
+                    alert('Por favor, informe a Latitude e a Longitude.');
+                    appDiv.innerHTML = '<p class="muted" style="text-align:center; padding:40px;">Preencha as coordenadas para iniciar a análise.</p>';
+                    return;
+                }
+                url = `https://spaceapps-bbmd.onrender.com/api/detective?region=custom&lat=${lat}&lon=${lon}&name=${encodeURIComponent(name)}&start=${startDate}&end=${endDate}`;
+            }
+
+            try {
+                const response = await fetch(url);
+                if (!response.ok) throw new Error('Erro ao conectar com a API FastAPI');
+                
+                const data = await response.json();
+                renderDashboard(data);
+            } catch (err) {
+                appDiv.innerHTML = `
+                    <div class="card" style="border-color: var(--accent-red);">
+                        <h2 style="color: var(--accent-red);">Erro de Conexão</h2>
+                    </div>
+                `;
+            }
+        }
+
+        function renderDashboard(data) {
+            const reg = data.region;
+            const period = data.period;
+
+            let trendLinesHtml = (data.trends || []).map(t => {
+                const tendencia = t["tendência (unid./ano)"] !== null ? t["tendência (unid./ano)"].toFixed(4) : 'N/A';
+                const pMk = t["p (Mann-Kendall)"] !== null ? t["p (Mann-Kendall)"].toFixed(4) : 'N/A';
+                const r2 = t["R²"] !== null ? t["R²"].toFixed(3) : 'N/A';
+                return `<li><strong>${t.variável}:</strong> ${tendencia} / ano · ${t["Mann-Kendall"]} · p(MK)=${pMk} · R²=${r2}</li>`;
+            }).join('');
+
+            let corrLinesHtml = Object.entries(data.correlations || {}).map(([k, v]) => 
+                `<li>${k}: <strong>${v.toFixed(2)}</strong></li>`
+            ).join('');
+
+            let critHtml = '';
+            if (!data.critical_days || data.critical_days.length === 0) {
+                critHtml = '<p class="muted">Nenhum dia acima do limiar 75 no período analisado.</p>';
+            } else {
+                let rows = data.critical_days.map(r => `
+                    <tr>
+                        <td><strong>${r.date.split('-').reverse().join('/')}</strong></td>
+                        <td>${r.precip_mm.toFixed(1)} mm</td>
+                        <td>${r.precip_7d.toFixed(1)} mm</td>
+                        <td>${r.soil_root_pct.toFixed(1)}%</td>
+                        <td><span style="color: var(--accent-red); font-weight: bold;">${r.flood_risk.toFixed(1)}</span></td>
+                    </tr>
+                `).join('');
+                critHtml = `<table><thead><tr><th>Data</th><th>Chuva (dia)</th><th>Acumulado 7 dias</th><th>Solo Raiz</th><th>Risco</th></tr></thead><tbody>${rows}</tbody></table>`;
+            }
+
+            let glossaryHtml = GLOSSARY.map(([name, text]) => `<li><strong>${name}:</strong> ${text}</li>`).join('');
+            let notesHtml = (data.notes || []).map(n => `<li>${n}</li>`).join('');
+
+            const html = `
+                <p class='muted'>📍 <strong>${reg.name}</strong> · Lat: ${reg.latitude}, Lon: ${reg.longitude} · Período: ${period.start} a ${period.end} (${period.n_days} dias)</p>
+                
+                <div class='card'>
+                    <p style="font-size: 1.05rem; margin-top: 0;">${reg.description}</p>
+                    <h2>Os Quatro Pilares do Desafio NASA</h2>
+                    <ol>
+                        <li><strong>O que</strong> está mudando: precipitação, saturação do solo, eventos compostos chuva+solo e o índice de risco.</li>
+                        <li><strong>Onde</strong>: ${reg.name}.</li>
+                        <li><strong>Quanto</strong> (taxa linear anual) e <strong>se é significativo</strong> (OLS e Mann-Kendall, α=0,05):</li>
+                    </ol>
+                    <ul>${trendLinesHtml}</ul>
+                </div>
+
+                <div class="grid-2">
+                    <div class='card' style="margin: 0;">
+                        <h2>Correlação Céu × Solo</h2>
+                        <ul>${corrLinesHtml}</ul>
+                        <p style="margin-bottom: 0;">Eventos compostos críticos (chuva persistente sobre solo já úmido): <strong style="color: var(--accent-yellow);">${data.n_compound_events}</strong></p>
+                    </div>
+                    <div class='card' style="margin: 0;">
+                        <h2>Dias Críticos (Risco ≥ 75)</h2>
+                        ${critHtml}
+                    </div>
+                </div>
+
+                <div class='card'>
+                    <h2>O Que Cada Variável Significa</h2>
+                    <ul>${glossaryHtml}</ul>
+                </div>
+
+                <!-- Gráfico 1: Precipitação Diária e Acumulada -->
+                <div class="card">
+                    <div class="chart-description">
+                        <h3>📈 Gráfico 1: Precipitação Diária e Acumulada (7 Dias)</h3>
+                        <p style="margin: 4px 0 0 0; font-size: 0.95rem;">
+                            <strong>O que faz:</strong> Exibe a distribuição diária de chuvas (barras azuis) combinada com o acumulado móvel de 7 dias (linha amarela).<br>
+                            <strong>O que representa:</strong> Identifica os picos repentinos de precipitação e o volume acumulado que antecede eventos críticos de saturação.
+                        </p>
+                    </div>
+                    <div id="precipPlot" style="height: 360px; width: 100%;"></div>
+                </div>
+
+                <!-- Gráfico 2: Saturação do Solo -->
+                <div class="card">
+                    <div class="chart-description">
+                        <h3>💧 Gráfico 2: Saturação do Solo (Superficial vs. Zona Radicular)</h3>
+                        <p style="margin: 4px 0 0 0; font-size: 0.95rem;">
+                            <strong>O que faz:</strong> Monitora a umidade e retenção de água em duas camadas do solo: superficial (0–5 cm) e profundidade total da zona radicular (0–100 cm).<br>
+                            <strong>O que representa:</strong> Mostra a "memória hídrica" da bacia. Solos com alta saturação radicular perdem a capacidade de infiltração, acelerando o escoamento superficial.
+                        </p>
+                    </div>
+                    <div id="soilPlot" style="height: 360px; width: 100%;"></div>
+                </div>
+
+                <!-- Gráfico 3: Índice de Risco -->
+                <div class="card">
+                    <div class="chart-description">
+                        <h3>⚠️ Gráfico 3: Índice de Risco de Inundação e Eventos Compostos</h3>
+                        <p style="margin: 4px 0 0 0; font-size: 0.95rem;">
+                            <strong>O que faz:</strong> Plota o índice composto de risco (0 a 100) integrando chuva e estado do solo. A linha tracejada vermelha marca o limiar crítico de alerta (<strong>≥ 75</strong>).<br>
+                            <strong>O que representa:</strong> Os diamantes amarelos destacam os <strong>eventos compostos</strong>, momentos em que chuva intensa e solo saturado coincidem criticamente.
+                        </p>
+                    </div>
+                    <div id="riskPlot" style="height: 360px; width: 100%;"></div>
+                </div>
+
+                <!-- Gráfico 4: Anomalia de Precipitação -->
+                <div class="card">
+                    <div class="chart-description">
+                        <h3>📊 Gráfico 4: Anomalia Diária de Precipitação</h3>
+                        <p style="margin: 4px 0 0 0; font-size: 0.95rem;">
+                            <strong>O que faz:</strong> Calcula o desvio da chuva diária em relação à climatologia histórica de referência da região.<br>
+                            <strong>O que representa:</strong> Permite visualizar rapidamente períodos anômalos de seca (valores abaixo de zero) ou excesso hídrico extremo (picos positivos acima da linha de base).
+                        </p>
+                    </div>
+                    <div id="anomalyPlot" style="height: 360px; width: 100%;"></div>
+                </div>
+
+                <!-- Gráfico 5: Scatter Plot Céu x Solo -->
+                <div class="card">
+                    <div class="chart-description">
+                        <h3>🔍 Gráfico 5: Dispersão Céu × Solo (Acumulado 7d vs. Saturação da Raiz)</h3>
+                        <p style="margin: 4px 0 0 0; font-size: 0.95rem;">
+                            <strong>O que faz:</strong> Plota o cruzamento direto entre o fator atmosférico (eixo X) e o fator terrestre (eixo Y).<br>
+                            <strong>O que representa:</strong> Cada ponto é um dia do ano colorido pelo nível de risco (Turbo). Os pontos no canto superior direito representam os cenários de maior periculosidade para enxurradas.
+                        </p>
+                    </div>
+                    <div id="scatterPlot" style="height: 480px; width: 100%;"></div>
+                </div>
+
+                <!-- Gráfico 6: Tabela de Tendências Estatísticas -->
+                <div class="card">
+                    <div class="chart-description">
+                        <h3>📋 Gráfico 6: Matriz Estatística de Tendências (OLS + Mann-Kendall)</h3>
+                        <p style="margin: 4px 0 0 0; font-size: 0.95rem;">
+                            <strong>O que faz:</strong> Apresenta uma tabela interativa sintetizando a direção, magnitude (taxa anual por OLS) e robustez estatística ($R^2$ e p-valor de Mann-Kendall) de cada variável.<br>
+                            <strong>O que representa:</strong> Permite avaliar com rigor científico se as mudanças observadas no ciclo hidrológico são estatisticamente significativas.
+                        </p>
+                    </div>
+                    <div id="tablePlot" style="height: 420px; width: 100%;"></div>
+                </div>
+
+                <div class='card'>
+                    <h2>Limitações e Notas Metodológicas</h2>
+                    <ul>${notesHtml}</ul>
+                    <p class='muted' style="margin-top: 16px; margin-bottom: 0;">Fonte: NASA POWER API (MERRA-2). Ferramenta voltada a suporte analítico e educacional; não substitui avisos oficiais de Defesa Civil.</p>
+                </div>
+            `;
+
+            document.getElementById('app').innerHTML = html;
+
+            // Renderiza os Gráficos Separados com Plotly
+            renderPrecipChart(data);
+            renderSoilChart(data);
+            renderRiskChart(data);
+            renderAnomalyChart(data);
+            renderScatter(data);
+            renderTrendTable(data);
+        }
+
+        function renderPrecipChart(data) {
+            const ts = data.timeseries;
+            const dates = ts.map(d => d.date);
+            const trace1 = { x: dates, y: ts.map(d => d.precip_mm), type: 'bar', name: 'Chuva diária (mm)', marker: { color: '#38bdf8' }, hovertemplate: 'Chuva: %{y:.1f} mm<extra></extra>' };
+            const trace2 = { x: dates, y: ts.map(d => d.precip_7d), type: 'scatter', mode: 'lines', name: 'Acumulado 7 dias', line: { color: '#fbbf24', width: 2 }, yaxis: 'y2', hovertemplate: '7 dias: %{y:.1f} mm<extra></extra>' };
+            
+            const layout = {
+                template: 'plotly_dark', paper_bgcolor: '#0f172a', plot_bgcolor: '#0f172a', height: 360,
+                margin: { t: 30, b: 40, l: 50, r: 50 }, hovermode: 'x unified',
+                legend: { orientation: 'h', yanchor: 'bottom', y: 1.02, x: 0 },
+                yaxis: { title: { text: 'mm/dia' } },
+                yaxis2: { overlaying: 'y', side: 'right', title: { text: 'mm / 7d' }, showgrid: false }
+            };
+            Plotly.newPlot('precipPlot', [trace1, trace2], layout, {responsive: true});
+        }
+
+        function renderSoilChart(data) {
+            const ts = data.timeseries;
+            const dates = ts.map(d => d.date);
+            const trace3 = { x: dates, y: ts.map(d => d.soil_surface_pct), type: 'scatter', mode: 'lines', name: 'Solo 0–5 cm (%)', line: { color: '#fb7185', width: 1.6 }, hovertemplate: 'Superfície: %{y:.1f}%<extra></extra>' };
+            const trace4 = { x: dates, y: ts.map(d => d.soil_root_pct), type: 'scatter', mode: 'lines', name: 'Zona radicular 0–100 cm (%)', line: { color: '#e11d48', width: 2.4 }, hovertemplate: 'Raiz: %{y:.1f}%<extra></extra>' };
+            
+            const layout = {
+                template: 'plotly_dark', paper_bgcolor: '#0f172a', plot_bgcolor: '#0f172a', height: 360,
+                margin: { t: 30, b: 40, l: 50, r: 30 }, hovermode: 'x unified',
+                legend: { orientation: 'h', yanchor: 'bottom', y: 1.02, x: 0 },
+                yaxis: { title: { text: 'Saturação (%)' }, range: [0, 100] }
+            };
+            Plotly.newPlot('soilPlot', [trace3, trace4], layout, {responsive: true});
+        }
+
+        function renderRiskChart(data) {
+            const ts = data.timeseries;
+            const dates = ts.map(d => d.date);
+            const trace5 = { x: dates, y: ts.map(d => d.flood_risk), type: 'scatter', mode: 'lines', name: 'Índice de risco', line: { color: '#c084fc', width: 2.5 }, fill: 'tozeroy', fillcolor: 'rgba(192,132,252,0.15)', hovertemplate: 'Risco: %{y:.1f}/100<extra></extra>' };
+            const compoundTs = ts.filter(d => d.compound_flood);
+            const traceCompound = { x: compoundTs.map(d => d.date), y: compoundTs.map(d => d.flood_risk), type: 'scatter', mode: 'markers', name: 'Evento composto (chuva + solo)', marker: { color: '#facc15', size: 8, symbol: 'diamond' }, hovertemplate: 'Evento composto<extra></extra>' };
+            
+            const layout = {
+                template: 'plotly_dark', paper_bgcolor: '#0f172a', plot_bgcolor: '#0f172a', height: 360,
+                margin: { t: 30, b: 40, l: 50, r: 30 }, hovermode: 'x unified',
+                legend: { orientation: 'h', yanchor: 'bottom', y: 1.02, x: 0 },
+                yaxis: { title: { text: 'Risco (0–100)' }, range: [0, 100] },
+                shapes: [{ type: 'line', xref: 'paper', x0: 0, x1: 1, yref: 'y', y0: 75, y1: 75, line: { color: '#f87171', dash: 'dash' } }]
+            };
+            Plotly.newPlot('riskPlot', [trace5, traceCompound], layout, {responsive: true});
+        }
+
+        function renderAnomalyChart(data) {
+            const ts = data.timeseries;
+            const dates = ts.map(d => d.date);
+            const trace6 = { x: dates, y: ts.map(d => d.precip_anomaly), type: 'scatter', mode: 'lines', name: 'Anomalia de chuva', line: { color: '#34d399', width: 1.4 }, hovertemplate: 'Anomalia: %{y:.2f} mm<extra></extra>' };
+            
+            const layout = {
+                template: 'plotly_dark', paper_bgcolor: '#0f172a', plot_bgcolor: '#0f172a', height: 360,
+                margin: { t: 30, b: 40, l: 50, r: 30 }, hovermode: 'x unified',
+                legend: { orientation: 'h', yanchor: 'bottom', y: 1.02, x: 0 },
+                yaxis: { title: { text: 'mm (anomalia)' } },
+                shapes: [{ type: 'line', xref: 'paper', x0: 0, x1: 1, yref: 'y', y0: 0, y1: 0, line: { color: '#64748b' } }]
+            };
+            Plotly.newPlot('anomalyPlot', [trace6], layout, {responsive: true});
+        }
+
+        function renderScatter(data) {
+            const ts = data.timeseries;
+            const scatterTrace = {
+                x: ts.map(d => d.precip_7d),
+                y: ts.map(d => d.soil_root_pct),
+                mode: 'markers',
+                marker: { size: 6, color: ts.map(d => d.flood_risk), colorscale: 'Turbo', showscale: true, colorbar: { title: 'Risco' } },
+                text: ts.map(d => d.date),
+                hovertemplate: '%{text}<br>7d: %{x:.1f} mm<br>Solo: %{y:.1f}%<extra></extra>',
+                name: 'Dias'
+            };
+
+            const layout = {
+                title: 'Céu × Solo: Acúmulo de 7 dias versus Saturação da Zona Radicular',
+                xaxis: { title: 'Precipitação acumulada em 7 dias (mm)' },
+                yaxis: { title: 'Saturação da zona radicular (%)' },
+                template: 'plotly_dark', paper_bgcolor: '#0f172a', plot_bgcolor: '#0f172a', height: 480,
+                margin: { t: 60, b: 60, l: 60, r: 60 }
+            };
+
+            Plotly.newPlot('scatterPlot', [scatterTrace], layout, {responsive: true});
+        }
+
+        function renderTrendTable(data) {
+            const trends = data.trends;
+            const headers = Object.keys(trends[0]);
+            const values = headers.map(h => trends.map(t => t[h]));
+
+            const tableTrace = {
+                type: 'table',
+                header: { values: headers, fill: { color: '#090d16' }, font: { color: 'white', size: 12 }, align: 'left' },
+                cells: { values: values, fill: { color: '#0f172a' }, font: { color: '#e2e8f0', size: 11 }, align: 'left', height: 28 }
+            };
+
+            const layout = {
+                title: 'O que muda, quanto muda, e se a mudança é significativa (OLS + Mann-Kendall)',
+                template: 'plotly_dark', paper_bgcolor: '#0f172a', plot_bgcolor: '#0f172a', height: 420,
+                margin: { l: 20, r: 20, t: 60, b: 20 }
+            };
+
+            Plotly.newPlot('tablePlot', [tableTrace], layout, {responsive: true});
+        }
+
+        window.onload = loadDashboard;
+    </script>
+</body>
+</html>
