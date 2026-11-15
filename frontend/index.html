@@ -6,6 +6,9 @@
     <title>Earth System Trend Detective — NASA Space Apps</title>
     <!-- Plotly.js -->
     <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <!-- Leaflet.js para mapas interativos reais (Sem API Key / Sem Bloqueios) -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
         :root {
             --bg-body: #020617;
@@ -217,7 +220,7 @@
                 </select>
             </div>
 
-            <!-- Inputs de coordenadas personalizadas (ocultos por padrão) -->
+            <!-- Inputs de coordenadas personalizadas -->
             <div id="customInputs" style="display: none; gap: 8px; align-items: center; flex-wrap: wrap;">
                 <input type="text" id="customName" placeholder="Nome do Local" style="width: 140px;">
                 <input type="number" step="any" id="customLat" placeholder="Latitude (ex: -21.12)" style="width: 150px;">
@@ -246,14 +249,13 @@
     </div>
 
     <script>
-        // Define data final padrão como hoje ao abrir a página
         document.getElementById('endDate').value = new Date().toISOString().split('T')[0];
 
         const GLOSSARY = [
-            ["Precipitação (PRECTOTCORR)", "Chuva diária corrigida, NASA POWER / MERRA-2, em mm/dia. É o gatilho meteorológico da enchente."],
-            ["Saturação superficial (GWETTOP)", "Umidade da camada 0–5 cm (0–1). Responde rápido à chuva; indica encharcamento raso e escoamento imediato."],
-            ["Saturação radicular (GWETROOT)", "Umidade de 0–100 cm (0–1). Memória hídrica do solo: se já está alto, chuva nova vira escoamento."],
-            ["Evapotranspiração (EVPTRNS)", "Energia usada para evaporar água. Convertida em mm para um balanço chuva − ET."],
+            ["Precipitação (PRECTOTCORR)", "Chuva diária corrigida, NASA POWER / MERRA-2, em mm/dia. É o gatilho meteorológico da enchente[cite: 5, 6]."],
+            ["Saturação superficial (GWETTOP)", "Umidade da camada 0–5 cm (0–1). Responde rápido à chuva; indica encharcamento raso e escoamento imediato[cite: 5, 6]."],
+            ["Saturação radicular (GWETROOT)", "Umidade de 0–100 cm (0–1). Memória hídrica do solo: se já está alto, chuva nova vira escoamento[cite: 5, 6]."],
+            ["Evapotranspiração (EVPTRNS)", "Energia usada para evaporar água. Convertida em mm para um balanço chuva − ET[cite: 5, 6]."],
             ["API", "Índice de precipitação antecedente: memória exponencial da chuva (k=0,85). Captura solo ‘já molhado’."],
             ["Índice de risco", "Combinação 0–100 de chuva em 7 dias, saturação do solo, API e anomalia mensal. Crítico ≥ 75."]
         ];
@@ -285,8 +287,11 @@
                     <div style="font-size: 1.2rem; color: var(--accent-blue);">Buscando dados da API da NASA para o período selecionado...</div>
                 </div>
             `;
+            
+            // const baseUrl = `https://spaceapps-bbmd.onrender.com/api`
+            const baseUrl = `http://localhost:8000/api`
 
-            let url = `https://spaceapps-bbmd.onrender.com/api/detective?region=${region}&start=${startDate}&end=${endDate}`;
+            let url = `${baseUrl}/detective?region=${region}&start=${startDate}&end=${endDate}`;
 
             if (region === 'custom') {
                 const name = document.getElementById('customName').value || 'Local Personalizado';
@@ -298,7 +303,7 @@
                     appDiv.innerHTML = '<p class="muted" style="text-align:center; padding:40px;">Preencha as coordenadas para iniciar a análise.</p>';
                     return;
                 }
-                url = `https://spaceapps-bbmd.onrender.com/api/detective?region=custom&lat=${lat}&lon=${lon}&name=${encodeURIComponent(name)}&start=${startDate}&end=${endDate}`;
+                url = `${baseUrl}/api/detective?region=custom&lat=${lat}&lon=${lon}&name=${encodeURIComponent(name)}&start=${startDate}&end=${endDate}`;
             }
 
             try {
@@ -310,7 +315,8 @@
             } catch (err) {
                 appDiv.innerHTML = `
                     <div class="card" style="border-color: var(--accent-red);">
-                        <h2 style="color: var(--accent-red);">Erro de Conexão</h2>
+                        <h2 style="color: var(--accent-red);">Erro de Conexão com o Servidor</h2>
+                        <p class="muted">Não foi possível carregar os dados. Verifique sua conexão ou se a API em nuvem está ativa.</p>
                     </div>
                 `;
             }
@@ -347,12 +353,43 @@
                 critHtml = `<table><thead><tr><th>Data</th><th>Chuva (dia)</th><th>Acumulado 7 dias</th><th>Solo Raiz</th><th>Risco</th></tr></thead><tbody>${rows}</tbody></table>`;
             }
 
+            // Renderiza enchentes históricas (Ground Truth)
+            let activeFloods = [];
+            if (reg.historical_floods && reg.historical_floods.length > 0) {
+                activeFloods = reg.historical_floods.filter(f => f.date >= period.start && f.date <= period.end);
+            }
+            let floodsHtml = '';
+            if (!activeFloods || activeFloods.length === 0) {
+                floodsHtml = '<p class="muted">Nenhum evento histórico ou prova de caso cadastrada para este local.</p>';
+            } else {
+                floodsHtml = activeFloods.map(f => `
+                    <div style="background: rgba(248, 113, 113, 0.05); border-left: 3px solid var(--accent-red); padding: 12px 16px; margin: 10px 0; border-radius: 0 10px 10px 0;">
+                        <strong>📅 ${f.date.split('-').reverse().join('/')}</strong> — ${f.description}
+                        ${f.link ? `<br><a href="${f.link}" target="_blank" style="font-size: 0.9rem; font-weight: 500;">🔗 Matéria / Comprovação Oficial da Defesa Civil / Mídia</a>` : ''}
+                    </div>
+                `).join('');
+            }
+
             let glossaryHtml = GLOSSARY.map(([name, text]) => `<li><strong>${name}:</strong> ${text}</li>`).join('');
             let notesHtml = (data.notes || []).map(n => `<li>${n}</li>`).join('');
 
             const html = `
                 <p class='muted'>📍 <strong>${reg.name}</strong> · Lat: ${reg.latitude}, Lon: ${reg.longitude} · Período: ${period.start} a ${period.end} (${period.n_days} dias)</p>
                 
+                <!-- CARD DO MAPA (Célula de Grade NASA POWER) -->
+                <div class='card'>
+                    <h2>🗺️ Localização Geográfica e Célula de Grade (MERRA-2)</h2>
+                    <p class="muted" style="margin-bottom: 12px;">Visualização da grade espacial do modelo meteorológico global da NASA (${reg.latitude}, ${reg.longitude}) com resolução aproximada de 0.5° × 0.625°.</p>
+                    <div id="mapPlot" style="height: 380px; width: 100%; border-radius: 12px; overflow: hidden;"></div>
+                </div>
+
+                <!-- CARD DE ENCHENTES HISTÓRICAS (GROUND TRUTH) -->
+                <div class='card'>
+                    <h2>⚠️ Validação por Enchentes Históricas (Ground Truth)</h2>
+                    <p class="muted" style="margin-bottom: 12px;">Eventos reais documentados que servem como prova de calibração para o índice de risco do sistema:</p>
+                    ${floodsHtml}
+                </div>
+
                 <div class='card'>
                     <p style="font-size: 1.05rem; margin-top: 0;">${reg.description}</p>
                     <h2>Os Quatro Pilares do Desafio NASA</h2>
@@ -398,7 +435,7 @@
                     <div class="chart-description">
                         <h3>💧 Gráfico 2: Saturação do Solo (Superficial vs. Zona Radicular)</h3>
                         <p style="margin: 4px 0 0 0; font-size: 0.95rem;">
-                            <strong>O que faz:</strong> Monitora a umidade e retenção de água em duas camadas do solo: superficial (0–5 cm) e profundidade total da zona radicular (0–100 cm).<br>
+                            <strong>O que faz:</strong> Monitora a umidade e retenção de água em duas camadas do solo: superficial (0–5 cm) e profundidade total da zona radicular (0–100 cm)[cite: 5, 6].<br>
                             <strong>O que representa:</strong> Mostra a "memória hídrica" da bacia. Solos com alta saturação radicular perdem a capacidade de infiltração, acelerando o escoamento superficial.
                         </p>
                     </div>
@@ -411,7 +448,7 @@
                         <h3>⚠️ Gráfico 3: Índice de Risco de Inundação e Eventos Compostos</h3>
                         <p style="margin: 4px 0 0 0; font-size: 0.95rem;">
                             <strong>O que faz:</strong> Plota o índice composto de risco (0 a 100) integrando chuva e estado do solo. A linha tracejada vermelha marca o limiar crítico de alerta (<strong>≥ 75</strong>).<br>
-                            <strong>O que representa:</strong> Os diamantes amarelos destacam os <strong>eventos compostos</strong>, momentos em que chuva intensa e solo saturado coincidem criticamente.
+                            <strong>O que representa:</strong> Os diamantes amarelos destacam os <strong>eventos compostos</strong>. Linhas pontilhadas indicam as enchentes históricas reais cadastradas.
                         </p>
                     </div>
                     <div id="riskPlot" style="height: 360px; width: 100%;"></div>
@@ -423,7 +460,7 @@
                         <h3>📊 Gráfico 4: Anomalia Diária de Precipitação</h3>
                         <p style="margin: 4px 0 0 0; font-size: 0.95rem;">
                             <strong>O que faz:</strong> Calcula o desvio da chuva diária em relação à climatologia histórica de referência da região.<br>
-                            <strong>O que representa:</strong> Permite visualizar rapidamente períodos anômalos de seca (valores abaixo de zero) ou excesso hídrico extremo (picos positivos acima da linha de base).
+                            <strong>O que representa:</strong> Permite visualizar rapidamente períodos anômalos de seca (valores abaixo de zero) ou excesso hídrico extremo.
                         </p>
                     </div>
                     <div id="anomalyPlot" style="height: 360px; width: 100%;"></div>
@@ -435,7 +472,7 @@
                         <h3>🔍 Gráfico 5: Dispersão Céu × Solo (Acumulado 7d vs. Saturação da Raiz)</h3>
                         <p style="margin: 4px 0 0 0; font-size: 0.95rem;">
                             <strong>O que faz:</strong> Plota o cruzamento direto entre o fator atmosférico (eixo X) e o fator terrestre (eixo Y).<br>
-                            <strong>O que representa:</strong> Cada ponto é um dia do ano colorido pelo nível de risco (Turbo). Os pontos no canto superior direito representam os cenários de maior periculosidade para enxurradas.
+                            <strong>O que representa:</strong> Cada ponto é um dia do ano colorido pelo nível de risco (Turbo). Os pontos no canto superior direito representam os cenários de maior periculosidade.
                         </p>
                     </div>
                     <div id="scatterPlot" style="height: 480px; width: 100%;"></div>
@@ -456,13 +493,14 @@
                 <div class='card'>
                     <h2>Limitações e Notas Metodológicas</h2>
                     <ul>${notesHtml}</ul>
-                    <p class='muted' style="margin-top: 16px; margin-bottom: 0;">Fonte: NASA POWER API (MERRA-2). Ferramenta voltada a suporte analítico e educacional; não substitui avisos oficiais de Defesa Civil.</p>
+                    <p class='muted' style="margin-top: 16px; margin-bottom: 0;">Fonte: NASA POWER API (MERRA-2)[cite: 5, 6]. Ferramenta voltada a suporte analítico e educacional; não substitui avisos oficiais de Defesa Civil.</p>
                 </div>
             `;
 
             document.getElementById('app').innerHTML = html;
 
-            // Renderiza os Gráficos Separados com Plotly
+            // Renderiza os gráficos e o mapa
+            renderMap(data);
             renderPrecipChart(data);
             renderSoilChart(data);
             renderRiskChart(data);
@@ -471,6 +509,56 @@
             renderTrendTable(data);
         }
 
+      function renderMap(data) {
+            const reg = data.region;
+
+            // Remove o mapa anterior se já existir para evitar conflito de divs
+            if (window.currentMap) {
+                window.currentMap.remove();
+            }
+
+            // 1. Inicializa o mapa Leaflet centralizado na região
+            const map = L.map('mapPlot', {
+                center: [reg.latitude, reg.longitude],
+                zoom: 10,
+                attributionControl: true
+            });
+            window.currentMap = map;
+
+            // 2. Tile 100% gratuito da Esri (Sem bloqueio do OpenStreetMap, sem API Key)
+            L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+                maxZoom: 19,
+                attribution: 'Tiles &copy; Esri &mdash; Source: Esri, DeLorme, NAVTEQ, USGS, Intermap, iPC, NRCAN, Esri Japan, METI, Esri China (Hong Kong), and the GIS User Community'
+            }).addTo(map);
+
+            // 3. Define a célula de grade do modelo NASA POWER (MERRA-2: ~0.5° lat x 0.625° lon)
+            const latRes = 0.5;
+            const lonRes = 0.625;
+            const halfLat = latRes / 2;
+            const halfLon = lonRes / 2;
+
+            const bounds = [
+                [reg.latitude - halfLat, reg.longitude - halfLon], // Canto sudoeste
+                [reg.latitude + halfLat, reg.longitude + halfLon]  // Canto nordeste
+            ];
+
+            // 4. Desenha o retângulo da célula de grade da NASA no mapa
+            L.rectangle(bounds, {
+                color: "#0284c7",
+                weight: 2,
+                fillColor: "#38bdf8",
+                fillOpacity: 0.35
+            }).addTo(map).bindPopup(`<b>Célula NASA POWER (MERRA-2)</b><br>${reg.name}`);
+
+            // 5. Adiciona o marcador central exato da consulta
+            L.circleMarker([reg.latitude, reg.longitude], {
+                radius: 8,
+                color: "#ffffff",
+                weight: 2,
+                fillColor: "#ef4444",
+                fillOpacity: 1
+            }).addTo(map).bindPopup(`<b>Centro da Consulta</b><br>${reg.name}<br>Lat: ${reg.latitude}, Lon: ${reg.longitude}`).openPopup();
+        }
         function renderPrecipChart(data) {
             const ts = data.timeseries;
             const dates = ts.map(d => d.date);
@@ -509,12 +597,34 @@
             const compoundTs = ts.filter(d => d.compound_flood);
             const traceCompound = { x: compoundTs.map(d => d.date), y: compoundTs.map(d => d.flood_risk), type: 'scatter', mode: 'markers', name: 'Evento composto (chuva + solo)', marker: { color: '#facc15', size: 8, symbol: 'diamond' }, hovertemplate: 'Evento composto<extra></extra>' };
             
+            let shapes = [
+                { type: 'line', xref: 'paper', x0: 0, x1: 1, yref: 'y', y0: 75, y1: 75, line: { color: '#f87171', dash: 'dash' } }
+            ];
+
+            // Adiciona marcação vertical para enchentes históricas cadastradas que caem no período
+            if (data.region && data.region.historical_floods) {
+                data.region.historical_floods.forEach(f => {
+                    if (dates.includes(f.date)) {
+                        shapes.push({
+                            type: 'line',
+                            xref: 'x',
+                            yref: 'y',
+                            x0: f.date,
+                            x1: f.date,
+                            y0: 0,
+                            y1: 100,
+                            line: { color: '#ef4444', width: 2, dash: 'dot' }
+                        });
+                    }
+                });
+            }
+
             const layout = {
                 template: 'plotly_dark', paper_bgcolor: '#0f172a', plot_bgcolor: '#0f172a', height: 360,
                 margin: { t: 30, b: 40, l: 50, r: 30 }, hovermode: 'x unified',
                 legend: { orientation: 'h', yanchor: 'bottom', y: 1.02, x: 0 },
                 yaxis: { title: { text: 'Risco (0–100)' }, range: [0, 100] },
-                shapes: [{ type: 'line', xref: 'paper', x0: 0, x1: 1, yref: 'y', y0: 75, y1: 75, line: { color: '#f87171', dash: 'dash' } }]
+                shapes: shapes
             };
             Plotly.newPlot('riskPlot', [trace5, traceCompound], layout, {responsive: true});
         }

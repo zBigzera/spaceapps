@@ -6,6 +6,8 @@ Tooling to investigate trends and flood risk through NASA Earht Data this softwa
 ```bash
 uv sync
 uv run spaceapps --region uba --start 2026-01-01 --end 2026-12-31
+
+uv run uvicorn spaceapps.api:app --reload --port 8000
 ```
 
 ```bash
