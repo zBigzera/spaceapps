@@ -1,55 +1,26 @@
 # Earth System Trend Detective
 
-Ferramenta do [NASA Space Apps Challenge](https://www.spaceappschallenge.org/) para investigar **se enchentes em uma região estão ligadas a tendências reais** de chuva, saturação do solo e outras variáveis da NASA — e se essas mudanças são estatisticamente significativas.
-
-Estudo de caso padrão: **Ubá, Minas Gerais**. Também há presets para Petrópolis, Porto Alegre e Recife, ou qualquer ponto (`--lat` / `--lon`).
-
-## O que a ferramenta responde
-
-1. **O que** está mudando (chuva, solo, eventos compostos chuva+solo, índice de risco).
-2. **Onde** (região ou coordenada escolhida).
-3. **Quanto** (inclinação linear por ano e R²).
-4. **Se é significativo** (regressão OLS e teste de Mann-Kendall, α = 0,05).
-
-Além das tendências, o motor cruza **céu × solo**: chuva diária e acumulada, umidade superficial e da zona radicular, evapotranspiração, índice de precipitação antecedente (API) e um índice de risco 0–100.
-
-## Dados
-
-Fonte padrão: **[NASA POWER](https://power.larc.nasa.gov/)** (reanálise **MERRA-2**), série diária pontual — adequada para décadas de análise sem baixar milhares de granules.
-
-| Variável | Código | Papel na enchente |
-| --- | --- | --- |
-| Precipitação corrigida | `PRECTOTCORR` | Gatilho (o que vem do céu) |
-| Umidade 0–5 cm | `GWETTOP` | Encharcamento raso / escoamento imediato |
-| Umidade 0–100 cm | `GWETROOT` | Memória hídrica do terreno |
-| Evapotranspiração | `EVPTRNS` | Quanto o solo/vegetação devolve à atmosfera |
-| Temperatura e UR | `T2M`, `RH2M` | Contexto atmosférico |
-
-## Como rodar
+Tooling to investigate trends and flood risk through NASA Earht Data this software uses Ordinary Least Squares (OLS), Mann-Kendall, and trend analysis to investigate statistically significant environmental changes that may influence flood occurencies. It integrates NASA Earth science data to analyze long-term trends in precipitation, soil moisture, evapotranspiration, and atmospheric conditions. Rather than examining rainfall independently, the platform evaluates interactions between atmospheric water input and terrestrial water storage to identify changes in flood susceptibility. Historical data are retrieved through NASA POWER, primarily using MERRA-2 reanalysis. The application calculates accumulated rainfall, antecedent precipitation, soil wetness, and compound conditions involving heavy rainfall and elevated soil moisture. By integrating NASA Earth science data, hydrological indicators, and statistical methods, Earth Science Data Analysis transforms complex environmental datasets into accessible scientific information. The platform aims to support researchers, students, environmental professionals, and local decision-makers in understanding regional environmental changes and identifying conditions that may contribute to flood susceptibility.
+## running locally
 
 ```bash
 uv sync
 uv run spaceapps --region uba --start 2026-01-01 --end 2026-12-31
 ```
 
-Isso baixa (ou relê o cache) 2010 → hoje para Ubá e grava `outputs/uba_trend_detective.html`.
-
 ```bash
-# Outra cidade
+# other regions
 uv run spaceapps --region porto-alegre --start 2015-01-01
 
-# Ponto qualquer
+# coordinates
 uv run spaceapps --lat -23.55 --lon -46.63 --name "São Paulo" --start 2012-01-01
 ```
 
-Requisitos: Python 3.12+ e internet na primeira execução (depois usa `data/cache/`).
+Uses: Python 3.12+ and internet then `data/cache/`
 
-## Por que não só GPM/GLDAS granule a granule
+## Version notes
+This pipeline uses long punctual series of NASA POWER not using `earthaccess` database of first version.
 
-A versão anterior consultava `GPM_3IMERGDL` e `GLDAS` via `earthaccess`, mas media o **arquivo inteiro** em vez do polígono de Ubá, normalizava o solo pelo máximo da própria série (sempre “100%” no período) e usava **um único ano** como se fosse climatologia. Sem recorte espacial e sem décadas de dados, tendência e risco ficam errados.
+## Limitations
 
-O pipeline atual usa séries pontuais longas da NASA POWER. `earthaccess` permanece nas dependências para uma evolução futura com GPM IMERG recortado na bbox.
-
-## Limitações
-
-O índice de risco estima a **coincidência** de chuva persistente e solo já úmido. Não é vazão de rio, nem aviso oficial de defesa civil.
+Would be increased accuration throught looking for oficial allerts of Civil Deffense and with local data of river level.
