@@ -1,4 +1,7 @@
 'use strict';
+// Leave empty for the same origin, or set the backend origin (without /api).
+// Example: 'https://your-backend.onrender.com'
+const API_BASE_URL = 'https://spaceapps-bbmd.onrender.com/';
 const $ = id => document.getElementById(id);
 const methodPage = document.body.dataset.page === 'methodology';
 const mint = '#7de0cc', amber = '#e9b875', muted = '#9babb7';
@@ -30,7 +33,7 @@ async function load(){
   status('Retrieving NASA data and calculating the index. Uncached periods may take a few minutes…');
   try{
     if(!window.Plotly)throw new Error('The chart library could not load. Check your internet connection and reload.');
-    const response=await fetch('/api/detective?'+q,{signal:request.signal});
+    const response=await fetch(`${API_BASE_URL.replace(/\/+$/, '')}/api/detective?${q}`,{signal:request.signal});
     const payload=await response.json();if(!response.ok)throw new Error(typeof payload.detail==='string'?payload.detail:'The analysis could not be completed. Check the dates and coordinates.');
     data=payload;if(!data.timeseries.length)throw new Error('No observations are available for this period.');
     $('status').hidden=true;
