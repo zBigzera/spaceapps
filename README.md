@@ -29,7 +29,7 @@ uv run --project backend python -m unittest discover -s backend/tests
 Set the Vercel project's Root Directory to `frontend`. The configuration in
 `frontend/vercel.json` enables clean URLs so `/methodology` serves
 `methodology.html`, preserving the investigation query parameters. Deploy this
-file with the frontend to make the methodology links work on Vercel.
+file with the frontend to make the methodology links work on Vercel. 
 
 ### Command-line reports
 
