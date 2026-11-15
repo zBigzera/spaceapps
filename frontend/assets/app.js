@@ -8,6 +8,7 @@ const mint = '#7de0cc', amber = '#e9b875', muted = '#9babb7';
 const riskPurple = '#c084fc', thresholdRed = '#f87171';
 const initial = new URLSearchParams(location.search);
 let data, request;
+let dayCalendar, selectedDay, availableDays;
 let coverageMap, coverageLayers;
 const number = (value, digits=1) => value === null || value === undefined || !Number.isFinite(Number(value)) ? 'Unavailable' : Number(value).toLocaleString('en-US', {maximumFractionDigits:digits, minimumFractionDigits:digits});
 const dateLabel = value => new Date(value+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
@@ -122,23 +123,84 @@ const trendNames=['Monthly precipitation (mm)','Deseasonalized precipitation (mm
 function renderMethod(){
   $('method-report').hidden=false;
   const q=parameters();q.delete('day');$('back-link').href='/?'+q+'#investigation';
-  $('selected-day').replaceChildren(...data.timeseries.map(row=>{const option=document.createElement('option');option.value=row.date;option.textContent=dateLabel(row.date);return option;}));
-  const selected = initial.get('day');
-const validRows = data.timeseries.filter(r => r.flood_risk != null);
-const targetRows = validRows.length ? validRows : data.timeseries;
-const middleDate = targetRows[Math.floor(targetRows.length / 2)].date;
-
-$('selected-day').value = data.timeseries.some(r => r.date === selected) 
-  ? selected 
-  : middleDate;
+  const validRows = data.timeseries.filter(row => row.flood_risk != null);
+  availableDays = new Set(validRows.map(row => row.date));
+  const requestedDay = initial.get('day');
+  selectedDay = availableDays.has(requestedDay)
+    ? requestedDay
+    : validRows[Math.floor(validRows.length / 2)]?.date;
+  setupDayCalendar();
   const t=riskTrend();$('trend-label').textContent=trendLabel(t);$('mk-p').textContent=pvalue(t.mk_p);$('slope').textContent=t.slope_per_year==null?'Unavailable':number(t.slope_per_year,2)+' pts / year';
   $('trend-summary').textContent=`${t.n} monthly observations · α = 0.05 · ${data.region.name}`;
   $('coverage-note').textContent=t.n<24?'Short record: use multiple years to investigate long-term trends. Seasonal cycles, incomplete periods and autocorrelation can affect these basic tests.':'The basic tests do not correct for autocorrelation. Seasonal cycles and incomplete periods may affect the results.';
   $('trend-table').innerHTML=data.trend_details.map((r,i)=>`<tr><td>${trendNames[i]}<br><small>${i<4?'Monthly':'Annual'}</small></td><td>${r.n}</td><td>${number(r.slope_per_year,3)}</td><td>${pvalue(r.ols_p)}</td><td>${pvalue(r.mk_p)}</td><td>${trendLabel(r)}</td></tr>`).join('');
-  $('selected-day').onchange=renderDay;renderDay();
+  renderDay();
+}
+function setupDayCalendar(){
+  const input = $('selected-day'), dialog = $('day-calendar');
+  input.disabled = !selectedDay;
+  input.value = selectedDay ? dateLabel(selectedDay) : '';
+  input.placeholder = selectedDay ? 'Choose a date' : 'No dates available';
+  $('day-picker-hint').textContent = selectedDay
+    ? 'Only days with available results'
+    : 'No daily index is available for this period';
+  if (!selectedDay) return;
+  if (!window.calendarjs) throw new Error('The calendar could not load. Please reload the page.');
+  const close = (restoreFocus=false) => {
+    dialog.hidden = true;
+    input.setAttribute('aria-expanded','false');
+    if (restoreFocus) input.focus();
+  };
+  const open = () => {
+    dialog.hidden = false;
+    input.setAttribute('aria-expanded','true');
+    dayCalendar.setValue(selectedDay);
+    dayCalendar.setView('days');
+    dialog.querySelector('.lm-calendar-content')?.focus({preventScroll:true});
+  };
+  // ISO values stay in application state; the input displays a readable date.
+  dayCalendar = calendarjs.Calendar($('day-calendar-grid'), {
+    type:'inline', value:selectedDay, footer:false, time:false, wheel:false,
+    validRange:(day,month,year) => !availableDays.has(
+      `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`
+    ),
+    onchange:(_, value) => {
+      const date = String(value).slice(0,10);
+      if (!availableDays.has(date)) return;
+      selectedDay = date;
+      input.value = dateLabel(date);
+      renderDay();
+      close(true);
+    }
+  });
+  dialog.querySelectorAll('.lm-calendar-navigation button').forEach((button,index) => {
+    button.textContent = index ? '›' : '‹';
+    button.setAttribute('aria-label',index ? 'Next month or year' : 'Previous month or year');
+  });
+  // Selecting the current day should also dismiss the calendar.
+  dialog.querySelector('.lm-calendar-content').addEventListener('click',event => {
+    const cell = event.target.closest('[data-grey]');
+    if (cell && cell.dataset.disabled === 'false') close(true);
+  });
+  input.addEventListener('click',() => dialog.hidden ? open() : close());
+  input.addEventListener('keydown',event => {
+    if (['Enter',' ','ArrowDown'].includes(event.key)) {event.preventDefault();open();}
+  });
+  document.addEventListener('pointerdown',event => {
+    if (!event.target.closest('.day-picker')) close();
+  });
+  dialog.addEventListener('keydown',event => {
+    if (event.key === 'Escape') {event.preventDefault();event.stopPropagation();close(true);}
+  },true);
+  dialog.addEventListener('focusout',() => {
+    requestAnimationFrame(() => {
+      if (!document.activeElement.closest('.day-picker')) close();
+    });
+  });
 }
 function renderDay(){
-  const selected=$('selected-day').value,row=data.timeseries.find(r=>r.date===selected);
+  const selected=selectedDay,row=data.timeseries.find(r=>r.date===selected);
+  if (!row) return;
   $('selected-date').textContent=dateLabel(selected);$('selected-score').textContent=number(row.flood_risk);
   $('selected-level').textContent=row.flood_risk==null?'Unavailable':row.flood_risk<=40?'Low':row.flood_risk<=60?'Moderate':row.flood_risk<=75?'High':'Critical';
   const terms=[['7-day rainfall',35,'rain_contribution'],['Root-zone soil wetness',30,'soil_contribution'],['Antecedent rainfall (API)',20,'api_contribution'],['Rainfall anomaly',15,'anomaly_contribution']];
