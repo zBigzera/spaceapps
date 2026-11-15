@@ -85,16 +85,16 @@ def fetch_nasa_power(region: Region, start: str, end: str, cache_dir: Path) -> p
     cache_dir.mkdir(parents=True, exist_ok=True)
     cached = cache_path(region, start, end, cache_dir)
     if cached.exists():
-        print(f"📂 Usando cache NASA POWER: {cached}")
+        print(f"Using NASA POWER cache: {cached}")
         df = pd.read_csv(cached, parse_dates=["date"], index_col="date")
         return df.sort_index()
 
-    print(f"🛰️  Consultando NASA POWER (MERRA-2) para {region.name}…")
-    print(f"    {start} → {end}  |  ponto ({region.latitude}, {region.longitude})")
+    print(f"Requesting NASA POWER (MERRA-2) for {region.name}")
+    print(f"    {start} to {end} | point ({region.latitude}, {region.longitude})")
 
     frames = []
     for window_start, window_end in _year_windows(start, end):
-        print(f"    · {window_start} a {window_end}")
+        print(f"    {window_start} to {window_end}")
         frames.append(_request_power(region, window_start, window_end))
 
     df = pd.concat(frames).sort_index()
@@ -104,5 +104,5 @@ def fetch_nasa_power(region: Region, start: str, end: str, cache_dir: Path) -> p
     df["soil_root_pct"] = df["soil_root"] * 100.0
     df["precip_mm"] = df["precip_mm"].clip(lower=0)
     df.to_csv(cached)
-    print(f"✅ {len(df)} dias salvos em {cached}")
+    print(f"Saved {len(df)} days to {cached}")
     return df

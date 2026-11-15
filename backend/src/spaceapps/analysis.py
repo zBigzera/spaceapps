@@ -145,6 +145,10 @@ def add_hydrology_features(df: pd.DataFrame) -> pd.DataFrame:
     soil_term = np.clip(out["soil_root_pct"], 0, 100)
     api_term = np.clip(out["api"] / max(out["api"].quantile(0.98), 1) * 100, 0, 100)
     anomaly_term = np.clip((out["precip_anomaly"] + 20) / 40 * 100, 0, 100)
+    out["rain_contribution"] = 0.35 * rain_term
+    out["soil_contribution"] = 0.30 * soil_term
+    out["api_contribution"] = 0.20 * api_term
+    out["anomaly_contribution"] = 0.15 * anomaly_term
     out["flood_risk"] = 0.35 * rain_term + 0.30 * soil_term + 0.20 * api_term + 0.15 * anomaly_term
     out["flood_risk"] = np.clip(out["flood_risk"], 0, 100)
     out["alert"] = pd.cut(

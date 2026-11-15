@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import math
+from dataclasses import asdict
 from datetime import date
 from pathlib import Path
 from typing import Any, Optional
@@ -8,12 +9,15 @@ from typing import Any, Optional
 import pandas as pd
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
 from spaceapps.analysis import add_hydrology_features, analyze
 from spaceapps.power import fetch_nasa_power
 from spaceapps.regions import REGIONS, Region, get_region
+from spaceapps.validation import compare_events, estimate_signals
 
-ROOT = Path.cwd()
+ROOT = Path(__file__).resolve().parents[3]
 CACHE_DIR = ROOT / "data" / "cache"
 
 app = FastAPI(
@@ -79,7 +83,18 @@ def run_detective(
                 description="Ponto personalizado definido via parâmetros da API.",
             )
         else:
+            if region not in REGIONS:
+                raise ValueError("Unknown region. Choose a listed region.")
             reg = get_region(region)
+
+        if (lat is None) != (lon is None):
+            raise ValueError("Provide both latitude and longitude.")
+        if not -90 <= reg.latitude <= 90 or not -180 <= reg.longitude <= 180:
+            raise ValueError("Coordinates are outside the valid range.")
+        if date.fromisoformat(start) > date.fromisoformat(end):
+            raise ValueError("Start date must be before end date.")
+        if date.fromisoformat(end) > date.today():
+            raise ValueError("Historical analysis cannot include future dates.")
 
         # 1. Busca dados da NASA POWER (com cache local)[cite: 5]
         raw = fetch_nasa_power(reg, start, end, CACHE_DIR)
@@ -93,12 +108,16 @@ def run_detective(
         for idx, row in featured.iterrows():
             timeseries.append({
                 "date": idx.strftime("%Y-%m-%d"),
-                "precip_mm": float(row.precip_mm) if pd.notna(row.precip_mm) else 0.0,
-                "precip_7d": float(row.precip_7d) if pd.notna(row.precip_7d) else 0.0,
-                "soil_surface_pct": float(row.soil_surface_pct) if pd.notna(row.soil_surface_pct) else 0.0,
-                "soil_root_pct": float(row.soil_root_pct) if pd.notna(row.soil_root_pct) else 0.0,
-                "flood_risk": float(row.flood_risk) if pd.notna(row.flood_risk) else 0.0,
-                "precip_anomaly": float(row.precip_anomaly) if pd.notna(row.precip_anomaly) else 0.0,
+                **{key: float(row[key]) if pd.notna(row[key]) else None for key in (
+                    "api", "precip_30d", "et_mm", "rain_contribution", "soil_contribution",
+                    "api_contribution", "anomaly_contribution",
+                )},
+                "precip_mm": float(row.precip_mm) if pd.notna(row.precip_mm) else None,
+                "precip_7d": float(row.precip_7d) if pd.notna(row.precip_7d) else None,
+                "soil_surface_pct": float(row.soil_surface_pct) if pd.notna(row.soil_surface_pct) else None,
+                "soil_root_pct": float(row.soil_root_pct) if pd.notna(row.soil_root_pct) else None,
+                "flood_risk": float(row.flood_risk) if pd.notna(row.flood_risk) else None,
+                "precip_anomaly": float(row.precip_anomaly) if pd.notna(row.precip_anomaly) else None,
                 "compound_flood": bool(row.compound_flood),
                 "alert": str(row.alert) if pd.notna(row.alert) else "baixo",
             })
@@ -118,6 +137,13 @@ def run_detective(
 
         # 5. Monta o payload e limpa eventuais NaNs remanescentes
         payload = {
+            "estimated_signals": estimate_signals(featured),
+            "validation": compare_events(featured, reg.slug, start, end),
+            "trend_details": [asdict(t) for t in report.trends],
+            "monthly_risk": [
+                {"date": idx.strftime("%Y-%m-%d"), "value": float(value)}
+                for idx, value in featured["flood_risk"].resample("MS").mean().items()
+            ],
             "status": "success",
             "region": {
                 "slug": reg.slug,
@@ -143,3 +169,16 @@ def run_detective(
 
     except Exception as exc:
         raise HTTPException(status_code=400, detail=str(exc))
+
+
+@app.get("/")
+def frontend():
+    return FileResponse(ROOT / "frontend" / "index.html")
+
+
+app.mount("/assets", StaticFiles(directory=ROOT / "frontend" / "assets"), name="assets")
+
+
+@app.get("/methodology")
+def methodology():
+    return FileResponse(ROOT / "frontend" / "methodology.html")
