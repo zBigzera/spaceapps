@@ -286,7 +286,7 @@
                 </div>
             `;
 
-            let url = `http://127.0.0.1:8000/api/detective?region=${region}&start=${startDate}&end=${endDate}`;
+            let url = `https://spaceapps-bbmd.onrender.com/api/detective?region=${region}&start=${startDate}&end=${endDate}`;
 
             if (region === 'custom') {
                 const name = document.getElementById('customName').value || 'Local Personalizado';
@@ -298,7 +298,7 @@
                     appDiv.innerHTML = '<p class="muted" style="text-align:center; padding:40px;">Preencha as coordenadas para iniciar a análise.</p>';
                     return;
                 }
-                url = `http://127.0.0.1:8000/api/detective?region=custom&lat=${lat}&lon=${lon}&name=${encodeURIComponent(name)}&start=${startDate}&end=${endDate}`;
+                url = `https://spaceapps-bbmd.onrender.com/api/detective?region=custom&lat=${lat}&lon=${lon}&name=${encodeURIComponent(name)}&start=${startDate}&end=${endDate}`;
             }
 
             try {
@@ -311,7 +311,6 @@
                 appDiv.innerHTML = `
                     <div class="card" style="border-color: var(--accent-red);">
                         <h2 style="color: var(--accent-red);">Erro de Conexão</h2>
-                        <p>${err.message}. Verifique se o servidor FastAPI está rodando em <code>http://127.0.0.1:8000</code>.</p>
                     </div>
                 `;
             }
