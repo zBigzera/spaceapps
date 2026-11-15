@@ -29,7 +29,7 @@ Fonte padrão: **[NASA POWER](https://power.larc.nasa.gov/)** (reanálise **MERR
 
 ```bash
 uv sync
-uv run spaceapps
+uv run spaceapps --region uba --start 2026-01-01 --end 2026-12-31
 ```
 
 Isso baixa (ou relê o cache) 2010 → hoje para Ubá e grava `outputs/uba_trend_detective.html`.
