@@ -1,28 +1,22 @@
 [project]
 name = "spaceapps"
 version = "0.1.0"
-description = "Earth System Trend Detective: chuva, saturação do solo e tendências com dados da NASA."
+description = "Add your description here"
 readme = "README.md"
 authors = [
     { name = "zBigzera", email = "otaviobigogno37@gmail.com" }
 ]
 requires-python = ">=3.12"
 dependencies = [
-    "earthaccess>=0.19.0",
     "numpy>=2.5.4",
     "pandas>=3.1.1",
     "plotly>=7.1.0",
-    "scipy>=1.16.0",
-    "xarray>=2026.9.0",
+    "scipy>=1.18.1",
 ]
 
 [project.scripts]
-spaceapps = "spaceapps.cli:main"
+spaceapps = "spaceapps:main"
 
 [build-system]
 requires = ["uv_build>=0.13.8,<0.14.0"]
 build-backend = "uv_build"
-
-[tool.uv.build-backend]
-module-name = "spaceapps"
-module-root = "src"
