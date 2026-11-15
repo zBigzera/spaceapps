@@ -303,7 +303,7 @@
                     appDiv.innerHTML = '<p class="muted" style="text-align:center; padding:40px;">Preencha as coordenadas para iniciar a análise.</p>';
                     return;
                 }
-                url = `${baseUrl}/api/detective?region=custom&lat=${lat}&lon=${lon}&name=${encodeURIComponent(name)}&start=${startDate}&end=${endDate}`;
+                url = `${baseUrl}/detective?region=custom&lat=${lat}&lon=${lon}&name=${encodeURIComponent(name)}&start=${startDate}&end=${endDate}`;
             }
 
             try {
