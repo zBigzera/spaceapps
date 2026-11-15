@@ -12,4 +12,4 @@ wheels/
 # NASA POWER cache and generated dashboards
 data/cache/
 outputs/
-*.html
+outputs/*
