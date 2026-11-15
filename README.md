@@ -5,7 +5,7 @@ Tooling to investigate trends and flood risk through NASA Earht Data this softwa
 
 ### Web application
 
-Run from the repository root (Python 3.12+): 
+Run from the repository root (Python 3.12+):
 
 ```bash
 uv sync --project backend
