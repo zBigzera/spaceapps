@@ -1,6 +1,11 @@
 # Earth System Trend Detective
 
+<img width="1561" height="848" alt="image" src="https://github.com/user-attachments/assets/0e30479b-456f-4037-88af-72beb658bc0f" />
+
 Tooling to track trends and flood risk through NASA Earht Data this software uses Ordinary Least Squares (OLS), Mann-Kendall, and trend analysis to investigate statistically significant environmental changes that may influence flood occurencies. It integrates NASA Earth science data to analyze long-term trends in precipitation, soil moisture, evapotranspiration, and atmospheric conditions. Rather than examining rainfall independently, the platform evaluates interactions between atmospheric water input and terrestrial water storage to identify changes in flood susceptibility. Historical data are retrieved through NASA POWER, primarily using MERRA-2 reanalysis. The application calculates accumulated rainfall, antecedent precipitation, soil wetness, and compound conditions involving heavy rainfall and elevated soil moisture. By integrating NASA Earth science data, hydrological indicators, and statistical methods, Earth Science Data Analysis transforms complex environmental datasets into accessible scientific information. The platform aims to support researchers, students, environmental professionals, and local decision-makers in understanding regional environmental changes and identifying conditions that may contribute to flood susceptibility.
+
+<img width="1024" height="702" alt="image" src="https://github.com/user-attachments/assets/034b550a-0ff2-4d73-b54e-7aad0f003937" />
+<img width="1024" height="441" alt="image" src="https://github.com/user-attachments/assets/081f7685-0e60-4018-873c-7fcff47a6e01" />
 
 ### Technology
 
